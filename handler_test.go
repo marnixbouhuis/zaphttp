@@ -297,4 +297,94 @@ func TestNewHandler(t *testing.T) {
 		assert.Equal(t, 201, responseMap["status_code"])
 		assert.Equal(t, "application/json", responseMap["mime_type"])
 	})
+
+	t.Run("Check custom per request filter function", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("Should not log request when filter returns false", func(t *testing.T) {
+			t.Parallel()
+
+			core, logs := observer.New(zapcore.DebugLevel)
+			logger := zap.New(core)
+
+			customFilterFunc := func(_ *http.Request, _ zapcore.Level) bool {
+				return false
+			}
+
+			requestLogger := zaphttp.NewHandler(
+				zaphttp.WithLogger(logger),
+				zaphttp.WithPerRequestFilter(customFilterFunc),
+				zaphttp.WithTraceFormatter(zaphttp.NoopFormatter),
+				zaphttp.WithRequestFormatter(zaphttp.NoopFormatter),
+			)
+
+			req := httptest.NewRequest(http.MethodGet, "/", nil)
+			rec := httptest.NewRecorder()
+
+			requestLogger(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				w.WriteHeader(http.StatusOK)
+			})).ServeHTTP(rec, req)
+
+			lines := logs.All()
+			assert.Empty(t, lines)
+		})
+
+		t.Run("Should not log for requests matching filter", func(t *testing.T) {
+			t.Parallel()
+
+			customFilterFunc := func(req *http.Request, level zapcore.Level) bool {
+				// Take if we should log or not based on the supplied request, this comes from the tests below.
+				shouldLog := req.URL.Query().Get("shouldLogLevel") == level.String()
+				return shouldLog
+			}
+
+			t.Run("Filter debug message", func(t *testing.T) {
+				core, logs := observer.New(zapcore.DebugLevel)
+				logger := zap.New(core)
+
+				requestLogger := zaphttp.NewHandler(
+					zaphttp.WithLogger(logger),
+					zaphttp.WithPerRequestFilter(customFilterFunc),
+					zaphttp.WithTraceFormatter(zaphttp.NoopFormatter),
+					zaphttp.WithRequestFormatter(zaphttp.NoopFormatter),
+				)
+
+				req := httptest.NewRequest(http.MethodGet, "/?shouldLogLevel=info", nil)
+				rec := httptest.NewRecorder()
+
+				requestLogger(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+					w.WriteHeader(http.StatusOK)
+				})).ServeHTTP(rec, req)
+
+				lines := logs.All()
+				assert.Len(t, lines, 1)
+				assert.Equal(t, zapcore.InfoLevel, lines[0].Level)
+				assert.Equal(t, "HTTP request finished", lines[0].Message)
+			})
+
+			t.Run("Filter info message", func(t *testing.T) {
+				core, logs := observer.New(zapcore.DebugLevel)
+				logger := zap.New(core)
+
+				requestLogger := zaphttp.NewHandler(
+					zaphttp.WithLogger(logger),
+					zaphttp.WithPerRequestFilter(customFilterFunc),
+					zaphttp.WithTraceFormatter(zaphttp.NoopFormatter),
+					zaphttp.WithRequestFormatter(zaphttp.NoopFormatter),
+				)
+
+				req := httptest.NewRequest(http.MethodGet, "/?shouldLogLevel=debug", nil)
+				rec := httptest.NewRecorder()
+
+				requestLogger(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+					w.WriteHeader(http.StatusOK)
+				})).ServeHTTP(rec, req)
+
+				lines := logs.All()
+				assert.Len(t, lines, 1)
+				assert.Equal(t, zapcore.DebugLevel, lines[0].Level)
+				assert.Equal(t, "Received HTTP request", lines[0].Message)
+			})
+		})
+	})
 }

@@ -90,6 +90,10 @@ func (h *handler) handleRequest(w http.ResponseWriter, req *http.Request, next h
 }
 
 func (h *handler) logRequest(l *zap.Logger, level zapcore.Level, msg string, req *http.Request, res *ResponseInfo) {
+	if shouldLog := h.options.perRequestFilterFn(req, level); !shouldLog {
+		return
+	}
+
 	if ce := l.Check(level, msg); ce != nil {
 		fields := h.options.requestFormatter.GetRequestFields(req, res)
 		ce.Write(fields...)
