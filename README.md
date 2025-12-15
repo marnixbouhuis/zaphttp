@@ -73,6 +73,7 @@ Options:
 - `WithTraceFormatter(formatter TraceFormatter)` - Set a custom trace formatter (default: ECS)
 - `WithRequestFormatter(formatter RequestFormatter)` - Set a custom request formatter (default: ECS)
 - `WithPerRequestLogger(fn PerRequestLoggerFunc)` - Customize how the per-request logger is created
+- `WithPerRequestFilter(fn PerRequestFilterFunc)` - Customize which requests should be logged (default: all requests)
 
 ### Formatters
 Formatters determine how request and trace information is structured in the logs.
