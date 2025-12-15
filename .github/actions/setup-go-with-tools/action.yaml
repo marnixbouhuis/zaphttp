@@ -19,7 +19,7 @@ runs:
       shell: bash
       run: go clean -modcache
     - name: Restore cache
-      uses: actions/cache/restore@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4.0.2
+      uses: actions/cache/restore@9255dc7a253b0ccc959486e2bca901246202afeb # v5.0.1
       with:
         path: |
           ${{ steps.vars.outputs.GOCACHE }}
@@ -29,7 +29,7 @@ runs:
       shell: bash
       run: make dependencies install-tools
     - name: Upload cache
-      uses: actions/cache/save@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4.0.2
+      uses: actions/cache/save@9255dc7a253b0ccc959486e2bca901246202afeb # v5.0.1
       with:
         path: |
           ${{ steps.vars.outputs.GOCACHE }}
